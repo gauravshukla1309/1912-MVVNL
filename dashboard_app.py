@@ -22,7 +22,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom Styling for Metric Cards, Reports, and Mobile Optimization
+# Custom Styling for Metric Cards, Reports, and BUTTON-STYLE TABS
 st.markdown("""
     <style>
     .main { background-color: #f8f9fa; }
@@ -41,9 +41,47 @@ st.markdown("""
         box-shadow: 0 2px 5px rgba(0,0,0,0.03);
         margin-bottom: 25px;
     }
-    .stButton>button {
-        border-radius: 6px;
-        font-weight: bold;
+
+    /* ---------------------------------------------------------
+       CUSTOM BUTTON-STYLE TABS
+    --------------------------------------------------------- */
+    /* Remove default tab border line */
+    div[data-baseweb="tab-border"] {
+        display: none !important;
+    }
+
+    /* Target all Tab headers to make them look like buttons */
+    button[data-baseweb="tab"] {
+        background-color: #f0f2f6 !important;
+        border-radius: 25px !important; /* Pill / Rounded Button shape */
+        padding: 10px 24px !important;
+        margin-right: 12px !important;
+        font-size: 15px !important;
+        font-weight: 700 !important;
+        color: #1F497D !important;
+        border: 2px solid #1F497D !important;
+        box-shadow: 0px 2px 5px rgba(0,0,0,0.05) !important;
+        transition: all 0.3s ease-in-out !important;
+    }
+
+    /* Hover State for Buttons */
+    button[data-baseweb="tab"]:hover {
+        background-color: #e2e8f0 !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0px 4px 8px rgba(0,0,0,0.1) !important;
+    }
+
+    /* Active Selected Button Highlight */
+    button[data-baseweb="tab"][aria-selected="true"] {
+        background-color: #1F497D !important;
+        color: #ffffff !important;
+        border: 2px solid #1F497D !important;
+        box-shadow: 0px 4px 12px rgba(31, 73, 125, 0.3) !important;
+    }
+
+    /* Ensure icons inside active tab match white text color */
+    button[data-baseweb="tab"][aria-selected="true"] p {
+        color: #ffffff !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -293,142 +331,11 @@ with header_col2:
 
 st.markdown("Automated random verification feedback system coupled with real-time complaint analytics.")
 
-tab_feedback, tab_analytics = st.tabs(["📲 Mobile Verification Feedback", "📊 Executive Analytics Dashboard"])
+# SWAPPED TABS & STYLED AS BUTTONS
+tab_analytics, tab_feedback = st.tabs(["📊 EXECUTIVE ANALYTICS DASHBOARD", "📲 CONSUMER FEEDBACK"])
 
 # =============================================================
-# TAB 1: RANDOM COMPLAINT FEEDBACK VERIFICATION
-# =============================================================
-with tab_feedback:
-    st.subheader("⚡ Automated Verification System")
-    
-    completed_set = get_completed_complaint_numbers()
-    total_records = len(df)
-    completed_count = len(completed_set)
-    remaining_count = max(0, total_records - completed_count)
-
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Total Dataset Complaints", f"{total_records:,}")
-    m2.metric("Feedbacks Saved (SQLite)", f"{completed_count:,}")
-    m3.metric("Pending Verification Pool", f"{remaining_count:,}")
-
-    st.divider()
-
-    current_ticket = st.session_state.current_complaint
-
-    if not current_ticket:
-        st.balloons()
-        st.success("🎉 All complaints in the dataset have been verified and recorded!")
-    else:
-        top_col1, top_col2 = st.columns([3, 1])
-        with top_col1:
-            st.markdown(f"### 🎯 Allotted Ticket: `{current_ticket.get('COMPLAINT_NO', 'N/A')}`")
-        with top_col2:
-            if st.button("🔀 Skip & Get Next Random Ticket", use_container_width=True):
-                st.session_state.current_complaint = pick_random_complaint()
-                st.rerun()
-
-        # Display Allotted Complaint & Consumer Remarks
-        with st.container():
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Complaint No", current_ticket.get('COMPLAINT_NO', 'N/A'))
-            c2.metric("Consumer Name", current_ticket.get('CONSUMER_NAME', 'N/A'))
-            c3.metric("Mobile No", current_ticket.get('MOBILE_NO', 'N/A'))
-            c4.metric("Status (STS)", current_ticket.get('STS', 'N/A'))
-            
-            d1, d2, d3 = st.columns(3)
-            d1.write(f"**Zone / Circle:** {current_ticket.get('ZONE', 'N/A')} / {current_ticket.get('CIRCLE', 'N/A')}")
-            d2.write(f"**Substation:** {current_ticket.get('SUBSTATION', 'N/A')}")
-            d3.write(f"**Closed By:** {current_ticket.get('CLOSEDBY', 'N/A')}")
-            
-            st.write(f"**Consumer Address:** {current_ticket.get('CONSUMER_ADDRESS', 'N/A')}")
-            
-            r1, r2 = st.columns(2)
-            with r1:
-                st.info(f"🗣️ **Consumer Remarks:**\n{current_ticket.get('REMARKS', 'N/A')}")
-            with r2:
-                st.warning(f"🛠️ **Staff Remarks:**\n{current_ticket.get('STAFFREMARKS', 'N/A')}")
-
-        st.divider()
-
-        # Feedback Input Form
-        st.subheader("✍️ Record Feedback")
-        with st.form(key="feedback_verification_form", clear_on_submit=True):
-            f1, f2 = st.columns(2)
-            
-            with f1:
-                feedback_status = st.radio(
-                    "Consumer Feedback Status *",
-                    options=["Satisfied", "Not Satisfied", "Wrongly Closed"],
-                    index=0,
-                    horizontal=True
-                )
-
-            with f2:
-                st.text_input("Recording Agent:", value=agent_id, disabled=True)
-
-            feedback_remark = st.text_area(
-                "Consumer Feedback Remarks / Comments *",
-                placeholder="e.g., Consumer confirmed supply restored properly OR Consumer mentioned transformer is still burnt.",
-                height=100
-            )
-
-            submit_button = st.form_submit_button(label="💾 Submit Feedback & Load Next Complaint", type="primary", use_container_width=True)
-
-        if submit_button:
-            if not feedback_remark.strip():
-                st.error("⚠️ Please enter a feedback remark before submitting.")
-            else:
-                record = {
-                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "complaint_no": str(current_ticket.get('COMPLAINT_NO')).strip(),
-                    "consumer_name": current_ticket.get('CONSUMER_NAME'),
-                    "consumer_mobile": current_ticket.get('MOBILE_NO'),
-                    "zone": current_ticket.get('ZONE'),
-                    "circle": current_ticket.get('CIRCLE'),
-                    "division": current_ticket.get('DIVISION'),
-                    "substation": current_ticket.get('SUBSTATION'),
-                    "closed_by": current_ticket.get('CLOSEDBY'),
-                    "feedback_status": feedback_status,
-                    "feedback_remark": feedback_remark,
-                    "agent_id": agent_id
-                }
-                
-                if save_feedback_sqlite(record):
-                    st.toast(f"✅ Feedback for ticket {current_ticket.get('COMPLAINT_NO')} stored in SQLite!")
-                    st.session_state.current_complaint = pick_random_complaint()
-                    st.rerun()
-
-    # Feedback Database Export Section
-    st.divider()
-    st.subheader("📊 Submitted Feedback Audit Log")
-    conn = get_db_connection()
-    fb_df = pd.read_sql_query("SELECT * FROM consumer_feedback ORDER BY id DESC", conn)
-    conn.close()
-
-    if not fb_df.empty:
-        fb_c1, fb_c2, fb_c3, fb_c4 = st.columns(4)
-        fb_c1.metric("Total Submitted", len(fb_df))
-        fb_c2.metric("Satisfied", len(fb_df[fb_df['feedback_status'] == 'Satisfied']))
-        fb_c3.metric("Not Satisfied", len(fb_df[fb_df['feedback_status'] == 'Not Satisfied']))
-        fb_c4.metric("Wrongly Closed ⚠️", len(fb_df[fb_df['feedback_status'] == 'Wrongly Closed']))
-        
-        st.dataframe(fb_df, use_container_width=True)
-        
-        buffer = io.BytesIO()
-        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-            fb_df.to_excel(writer, sheet_name='Feedback_Audit', index=False)
-            
-        st.download_button(
-            label="📥 Download Full SQLite Feedback Log (Excel)",
-            data=buffer.getvalue(),
-            file_name=f"Transformer_Feedback_Report_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-    else:
-        st.info("No feedback entries recorded in SQLite database yet.")
-
-# =============================================================
-# TAB 2: ANALYTICS DASHBOARD
+# TAB 1: EXECUTIVE ANALYTICS DASHBOARD
 # =============================================================
 with tab_analytics:
     # Top Metrics
@@ -598,3 +505,135 @@ with tab_analytics:
     ]
     available_cols = [col for col in columns_to_show if col in filtered_df.columns]
     st.dataframe(filtered_df[available_cols], use_container_width=True)
+
+# =============================================================
+# TAB 2: CONSUMER FEEDBACK
+# =============================================================
+with tab_feedback:
+    st.subheader("⚡ Automated Verification System")
+    
+    completed_set = get_completed_complaint_numbers()
+    total_records = len(df)
+    completed_count = len(completed_set)
+    remaining_count = max(0, total_records - completed_count)
+
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Total Dataset Complaints", f"{total_records:,}")
+    m2.metric("Feedbacks Saved (SQLite)", f"{completed_count:,}")
+    m3.metric("Pending Verification Pool", f"{remaining_count:,}")
+
+    st.divider()
+
+    current_ticket = st.session_state.current_complaint
+
+    if not current_ticket:
+        st.balloons()
+        st.success("🎉 All complaints in the dataset have been verified and recorded!")
+    else:
+        top_col1, top_col2 = st.columns([3, 1])
+        with top_col1:
+            st.markdown(f"### 🎯 Allotted Ticket: `{current_ticket.get('COMPLAINT_NO', 'N/A')}`")
+        with top_col2:
+            if st.button("🔀 Skip & Get Next Random Ticket", use_container_width=True):
+                st.session_state.current_complaint = pick_random_complaint()
+                st.rerun()
+
+        # Display Allotted Complaint & Consumer Remarks
+        with st.container():
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Complaint No", current_ticket.get('COMPLAINT_NO', 'N/A'))
+            c2.metric("Consumer Name", current_ticket.get('CONSUMER_NAME', 'N/A'))
+            c3.metric("Mobile No", current_ticket.get('MOBILE_NO', 'N/A'))
+            c4.metric("Status (STS)", current_ticket.get('STS', 'N/A'))
+            
+            d1, d2, d3 = st.columns(3)
+            d1.write(f"**Zone / Circle:** {current_ticket.get('ZONE', 'N/A')} / {current_ticket.get('CIRCLE', 'N/A')}")
+            d2.write(f"**Substation:** {current_ticket.get('SUBSTATION', 'N/A')}")
+            d3.write(f"**Closed By:** {current_ticket.get('CLOSEDBY', 'N/A')}")
+            
+            st.write(f"**Consumer Address:** {current_ticket.get('CONSUMER_ADDRESS', 'N/A')}")
+            
+            r1, r2 = st.columns(2)
+            with r1:
+                st.info(f"🗣️ **Consumer Remarks:**\n{current_ticket.get('REMARKS', 'N/A')}")
+            with r2:
+                st.warning(f"🛠️ **Staff Remarks:**\n{current_ticket.get('STAFFREMARKS', 'N/A')}")
+
+        st.divider()
+
+        # Feedback Input Form
+        st.subheader("✍️ Record Feedback")
+        with st.form(key="feedback_verification_form", clear_on_submit=True):
+            f1, f2 = st.columns(2)
+            
+            with f1:
+                feedback_status = st.radio(
+                    "Consumer Feedback Status *",
+                    options=["Satisfied", "Not Satisfied", "Wrongly Closed"],
+                    index=0,
+                    horizontal=True
+                )
+
+            with f2:
+                st.text_input("Recording Agent:", value=agent_id, disabled=True)
+
+            feedback_remark = st.text_area(
+                "Consumer Feedback Remarks / Comments *",
+                placeholder="e.g., Consumer confirmed supply restored properly OR Consumer mentioned transformer is still burnt.",
+                height=100
+            )
+
+            submit_button = st.form_submit_button(label="💾 Submit Feedback & Load Next Complaint", type="primary", use_container_width=True)
+
+        if submit_button:
+            if not feedback_remark.strip():
+                st.error("⚠️ Please enter a feedback remark before submitting.")
+            else:
+                record = {
+                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "complaint_no": str(current_ticket.get('COMPLAINT_NO')).strip(),
+                    "consumer_name": current_ticket.get('CONSUMER_NAME'),
+                    "consumer_mobile": current_ticket.get('MOBILE_NO'),
+                    "zone": current_ticket.get('ZONE'),
+                    "circle": current_ticket.get('CIRCLE'),
+                    "division": current_ticket.get('DIVISION'),
+                    "substation": current_ticket.get('SUBSTATION'),
+                    "closed_by": current_ticket.get('CLOSEDBY'),
+                    "feedback_status": feedback_status,
+                    "feedback_remark": feedback_remark,
+                    "agent_id": agent_id
+                }
+                
+                if save_feedback_sqlite(record):
+                    st.toast(f"✅ Feedback for ticket {current_ticket.get('COMPLAINT_NO')} stored in SQLite!")
+                    st.session_state.current_complaint = pick_random_complaint()
+                    st.rerun()
+
+    # Feedback Database Export Section
+    st.divider()
+    st.subheader("📊 Submitted Feedback Audit Log")
+    conn = get_db_connection()
+    fb_df = pd.read_sql_query("SELECT * FROM consumer_feedback ORDER BY id DESC", conn)
+    conn.close()
+
+    if not fb_df.empty:
+        fb_c1, fb_c2, fb_c3, fb_c4 = st.columns(4)
+        fb_c1.metric("Total Submitted", len(fb_df))
+        fb_c2.metric("Satisfied", len(fb_df[fb_df['feedback_status'] == 'Satisfied']))
+        fb_c3.metric("Not Satisfied", len(fb_df[fb_df['feedback_status'] == 'Not Satisfied']))
+        fb_c4.metric("Wrongly Closed ⚠️", len(fb_df[fb_df['feedback_status'] == 'Wrongly Closed']))
+        
+        st.dataframe(fb_df, use_container_width=True)
+        
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+            fb_df.to_excel(writer, sheet_name='Feedback_Audit', index=False)
+            
+        st.download_button(
+            label="📥 Download Full SQLite Feedback Log (Excel)",
+            data=buffer.getvalue(),
+            file_name=f"Transformer_Feedback_Report_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    else:
+        st.info("No feedback entries recorded in SQLite database yet.")
